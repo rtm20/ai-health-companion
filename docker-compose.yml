@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: habit_tracker
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - habit-network
+
+  # Spring Boot Backend
+  backend:
+    build: .
+    depends_on:
+      - postgres
+    environment:
+      SPRING_PROFILES_ACTIVE: production
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/habit_tracker
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: password
+      JWT_SECRET: your-super-secret-jwt-key-change-this-in-production
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-sk-test-key}
+    ports:
+      - "8080:8080"
+    networks:
+      - habit-network
+    restart: unless-stopped
+
+  # React Web App (Optional - can be served separately)
+  frontend:
+    build: 
+      context: ../web-app
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    networks:
+      - habit-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  habit-network:
+    driver: bridge
